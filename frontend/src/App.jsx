@@ -6,6 +6,28 @@ function App() {
   const [newItem, setNewItem] = useState("");
   const [editIndex, setEditIndex] = useState(null);
   const [editText, setEditText] = useState("");
+/*
+we can do it together 
+
+  const [state, setState] = useState({
+  items: [],
+  newItem: "",
+  editIndex: null,
+  editText: ""
+});
+
+  updating state
+  setState(prev => ({ ...prev, newItem: "hello" }));
+
+  reading state
+
+  state.items
+  state.newItem
+  state.editIndex
+  state.editText
+
+*/
+  
 
   const API = "http://localhost:5000/items";
 
@@ -58,7 +80,7 @@ function App() {
       <h2>React + Flask CRUD</h2>
 
       <div style={{ marginBottom: 20 }}>
-        <input
+        <input style={{fontSize: 20}}
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
           placeholder="Enter item"
