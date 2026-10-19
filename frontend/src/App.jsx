@@ -2,12 +2,24 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { decrement, increment, reset } from "./features/counter/counterSlice";
-import { fetchUser } from "./features/user/userSlice";
+import {
+  createUser,
+  deleteUser,
+  fetchUsers,
+  updateUser,
+} from "./features/user/userSlice";
 
 function App() {
   const dispatch = useDispatch();
   const count = useSelector((state) => state.counter.value);
-  const { data: user, status, error } = useSelector((state) => state.user);
+  const { users, status, error, mutationStatus, mutationError } = useSelector(
+    (state) => state.user,
+  );
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [editingUser, setEditingUser] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState("");
   const [editIndex, setEditIndex] = useState(null);
@@ -40,7 +52,35 @@ we can do it together
   // Fetch all items on load
   useEffect(() => {
     axios.get(API).then((res) => setItems(res.data));
-  }, []);
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  const addUser = async (event) => {
+    event.preventDefault();
+    if (!newUserName.trim() || !newUserEmail.trim()) return;
+
+    const result = await dispatch(
+      createUser({ name: newUserName, email: newUserEmail }),
+    );
+    if (createUser.fulfilled.match(result)) {
+      setNewUserName("");
+      setNewUserEmail("");
+    }
+  };
+
+  const startUserEdit = (user) => {
+    setEditingUser(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+  };
+
+  const saveUserEdit = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(
+      updateUser({ ...editingUser, name: editName, email: editEmail }),
+    );
+    if (updateUser.fulfilled.match(result)) setEditingUser(null);
+  };
 
   const fetchItems = async () => {
     const res = await axios.get(API);
@@ -89,13 +129,74 @@ we can do it together
         <button onClick={() => dispatch(decrement())}>-</button>
         <button onClick={() => dispatch(increment())}>+</button>
         <button onClick={() => dispatch(reset())}>Reset</button>
-        <h3>User slice (API)</h3>
-        <button onClick={() => dispatch(fetchUser())} disabled={status === "loading"}>
-          {status === "loading" ? "Loading..." : "Fetch user"}
+        <h3>User slice: create, read, update, delete</h3>
+        <p>Example API: JSONPlaceholder (write requests are simulated).</p>
+        <button onClick={() => dispatch(fetchUsers())} disabled={status === "loading"}>
+          {status === "loading" ? "Loading users..." : "Reload users"}
         </button>
-        {status === "failed" && <p role="alert">Request failed: {error}</p>}
-        {user && <p>{user.name} | {user.email} | {user.company.name}</p>}
-        {!user && status === "idle" && <p>No user loaded yet.</p>}
+        {status === "failed" && <p role="alert">Could not load users: {error}</p>}
+        {mutationStatus === "failed" && (
+          <p role="alert">Could not save changes: {mutationError}</p>
+        )}
+
+        <form onSubmit={addUser} style={{ margin: "16px 0" }}>
+          <input
+            value={newUserName}
+            onChange={(event) => setNewUserName(event.target.value)}
+            placeholder="Name"
+            aria-label="New user name"
+          />
+          <input
+            type="email"
+            value={newUserEmail}
+            onChange={(event) => setNewUserEmail(event.target.value)}
+            placeholder="Email"
+            aria-label="New user email"
+          />
+          <button type="submit" disabled={mutationStatus === "loading"}>
+            Create user
+          </button>
+        </form>
+
+        {status === "loading" && users.length === 0 && <p>Loading users...</p>}
+        <ul>
+          {users.map((user) => (
+            <li key={user.localId} style={{ marginBottom: 10 }}>
+              {editingUser?.localId === user.localId ? (
+                <form onSubmit={saveUserEdit}>
+                  <input
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    aria-label="Edit user name"
+                  />
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(event) => setEditEmail(event.target.value)}
+                    aria-label="Edit user email"
+                  />
+                  <button type="submit" disabled={mutationStatus === "loading"}>
+                    Save
+                  </button>
+                  <button type="button" onClick={() => setEditingUser(null)}>
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <>
+                  {user.name} ({user.email})
+                  <button onClick={() => startUserEdit(user)}>Edit</button>
+                  <button
+                    onClick={() => dispatch(deleteUser(user))}
+                    disabled={mutationStatus === "loading"}
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <div style={{ padding: 20, maxWidth: 500, margin: "auto" }}>
